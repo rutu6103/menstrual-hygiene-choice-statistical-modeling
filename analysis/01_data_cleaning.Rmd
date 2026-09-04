@@ -1,0 +1,98 @@
+---
+title: "01 — Data Cleaning and Validation"
+author: "Rutuja Kadam"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(readr)
+library(dplyr)
+library(janitor)
+library(tidyr)
+source("../R/helpers.R")
+
+dir.create("../results", showWarnings = FALSE, recursive = TRUE)
+
+data <- read_csv("../data/processed/anonymized_survey_data.csv", show_col_types = FALSE)
+```
+
+## Objective
+
+Validate the privacy-safe analytical dataset before any inference or modeling.
+
+```{r dimensions}
+dim(data)
+glimpse(data)
+
+quality_summary <- tibble(
+  metric = c("rows", "columns", "duplicate_rows", "duplicate_respondent_ids"),
+  value = c(
+    nrow(data),
+    ncol(data),
+    sum(duplicated(data)),
+    sum(duplicated(data$respondent_id))
+  )
+)
+
+write_csv(quality_summary, "../results/data_quality_summary.csv")
+quality_summary
+```
+
+## Missing values
+
+```{r missingness}
+missing_summary <- data %>%
+  summarise(across(everything(), ~sum(is.na(.)))) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "missing_n") %>%
+  mutate(missing_percent = missing_n / nrow(data)) %>%
+  arrange(desc(missing_n))
+
+write_csv(missing_summary, "../results/missing_value_summary.csv")
+missing_summary
+```
+
+## Duplicate rows
+
+```{r duplicates}
+sum(duplicated(data))
+stopifnot(!anyDuplicated(data$respondent_id))
+```
+
+## Type checks
+
+```{r types}
+likert_cols <- c(
+  "comfort_importance", "cost_importance", "availability_importance",
+  "health_risk_importance", "leakage_protection_importance",
+  "durability_importance", "reusability_importance", "variants_importance",
+  "brand_importance", "quality_importance", "sustainability_importance",
+  "affordability_importance", "satisfaction", "cultural_influence"
+)
+
+summary(data[likert_cols])
+
+stopifnot(all(data$awareness_score >= 0 & data$awareness_score <= 1, na.rm = TRUE))
+```
+
+## Factor preparation
+
+```{r factors}
+data <- data %>%
+  mutate(
+    awareness_category = factor(awareness_category, levels = c("Low", "Moderate", "High"), ordered = TRUE),
+    future_switch_intention = factor(future_switch_intention, levels = c("No", "Maybe", "Yes"), ordered = TRUE),
+    changed_product_5y = factor(changed_product_5y, levels = c("No", "Yes")),
+    region_type = clean_factor(region_type),
+    occupation = clean_factor(occupation),
+    education = clean_factor(education),
+    income_band = clean_factor(income_band)
+  )
+
+summary(data)
+```
+
+## Notes
+
+The raw questionnaire is deliberately excluded from the public repository. This file is the analysis-ready dataset used throughout the remaining notebooks.
