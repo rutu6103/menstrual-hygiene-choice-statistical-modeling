@@ -1,0 +1,149 @@
+---
+title: "04 — Behavioral Modeling"
+author: "Rutuja Kadam"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(readr)
+library(dplyr)
+library(MASS)
+library(broom)
+source("../R/helpers.R")
+
+dir.create("../results", showWarnings = FALSE, recursive = TRUE)
+
+data <- read_csv("../data/processed/anonymized_survey_data.csv", show_col_types = FALSE) %>%
+  mutate(
+    changed_product_5y = factor(changed_product_5y, levels = c("No", "Yes")),
+    future_switch_intention = factor(
+      future_switch_intention,
+      levels = c("No", "Maybe", "Yes"),
+      ordered = TRUE
+    ),
+    discussion_comfort = factor(discussion_comfort),
+    cultural_taboos = factor(cultural_taboos),
+    social_stigma = factor(social_stigma),
+    formal_menstrual_education = factor(formal_menstrual_education)
+  )
+```
+
+## Why these outcomes?
+
+Current product type is extremely imbalanced in this survey, so a primary-product classifier would provide a misleading impression of predictive performance. Two better-supported behavioral outcomes are used instead:
+
+1. whether a respondent changed primary product during the previous five years;
+2. ordered future switching intention: `No < Maybe < Yes`.
+
+## Model 1 — Past product change
+
+```{r changed-model}
+change_model <- glm(
+  changed_product_5y ~ satisfaction + uses_alternatives +
+    cultural_influence + discussion_comfort + cultural_taboos +
+    social_stigma + formal_menstrual_education,
+  data = data,
+  family = binomial()
+)
+
+change_model_results <- broom::tidy(
+  change_model,
+  exponentiate = TRUE,
+  conf.int = TRUE
+)
+
+change_model_diagnostics <- broom::glance(change_model)
+
+write_csv(change_model_results, "../results/product_change_logistic_model.csv")
+write_csv(
+  change_model_diagnostics,
+  "../results/product_change_logistic_model_diagnostics.csv"
+)
+
+change_model_results
+change_model_diagnostics
+```
+
+## Model 2 — Future switching intention
+
+The initial ordinal specification included several sparse categorical predictors. In particular, `discussion_comfort` produced implausibly large coefficients and odds ratios, indicating quasi-separation rather than a credible behavioral effect.
+
+The revised model therefore uses a smaller set of continuous/ordinal predictors with adequate variation across the sample. The goal is **stable explanatory modeling**, not maximizing the number of variables in the equation.
+
+```{r switch-model}
+switch_model <- MASS::polr(
+  future_switch_intention ~ satisfaction + cultural_influence +
+    cost_importance + quality_importance + sustainability_importance,
+  data = data,
+  Hess = TRUE
+)
+
+summary(switch_model)
+```
+
+## Odds ratios for the ordinal model
+
+```{r switch-or}
+coef_table <- coef(summary(switch_model))
+terms <- rownames(coef_table)
+coef_only <- coef_table[!grepl("\\|", terms), , drop = FALSE]
+
+ordinal_or <- data.frame(
+  term = rownames(coef_only),
+  estimate = coef_only[, "Value"],
+  std_error = coef_only[, "Std. Error"],
+  row.names = NULL
+) %>%
+  mutate(
+    z_value = estimate / std_error,
+    p_value = 2 * pnorm(abs(z_value), lower.tail = FALSE),
+    odds_ratio = exp(estimate),
+    conf_low = exp(estimate - 1.96 * std_error),
+    conf_high = exp(estimate + 1.96 * std_error)
+  )
+
+write_csv(ordinal_or, "../results/switching_ordinal_model.csv")
+ordinal_or
+```
+
+## Ordinal model fit summary
+
+```{r switch-fit}
+ordinal_model_fit <- tibble(
+  metric = c("AIC", "log_likelihood", "residual_deviance", "n_observations"),
+  value = c(
+    AIC(switch_model),
+    as.numeric(logLik(switch_model)),
+    switch_model$deviance,
+    nobs(switch_model)
+  )
+)
+
+write_csv(ordinal_model_fit, "../results/switching_ordinal_model_diagnostics.csv")
+ordinal_model_fit
+```
+
+## Model-stability check
+
+```{r switch-stability}
+ordinal_stability <- ordinal_or %>%
+  summarise(
+    max_absolute_coefficient = max(abs(estimate), na.rm = TRUE),
+    max_odds_ratio = max(odds_ratio, na.rm = TRUE),
+    min_odds_ratio = min(odds_ratio, na.rm = TRUE),
+    all_finite = all(is.finite(estimate)) && all(is.finite(odds_ratio))
+  )
+
+write_csv(ordinal_stability, "../results/switching_ordinal_model_stability.csv")
+ordinal_stability
+```
+
+## Proportional-odds caveat
+
+`polr` assumes proportional odds. In a publication or production setting, this assumption should be tested explicitly (for example with a Brant-style test or by comparing less restrictive ordinal/multinomial specifications). The model is retained because `No`, `Maybe`, and `Yes` form a defensible order and because the revised specification avoids the sparse categorical predictors that destabilized the original model.
+
+## Interpretation guardrail
+
+These are observational associations. They do not establish that satisfaction, cultural influence, cost, quality, sustainability, or other predictors *cause* product-switching intentions. The model is intended to demonstrate careful explanatory modeling on a small survey dataset.

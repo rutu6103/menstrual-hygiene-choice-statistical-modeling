@@ -1,0 +1,23 @@
+# Local/raw data
+Research Questionnaire  (Responses).xlsx
+data/raw/
+*.xlsx
+
+# R / RStudio
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+
+# renv local library
+renv/library/
+renv/staging/
+
+# Rendered analysis artifacts
+analysis/*.html
+analysis/*.docx
+analysis/*_files/
+
+# OS
+.DS_Store
+Thumbs.db
