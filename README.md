@@ -279,12 +279,11 @@ visualizations in `figures/`.
     bias.
 
 ## Author
-**Rutuja Kadam** - M.Sc. Statistics | Data Scientist and Analyst
+
+**Rutuja Kadam** — M.Sc. Statistics | Data Scientist and Analyst
 
 Python · SQL · Machine Learning · Power BI · Statistics
 
 [LinkedIn](https://www.linkedin.com/in/rutuja-kadam-data/) · [GitHub](https://github.com/rutu6103)
 
-This repository is a portfolio restructuring of an academic research
-project. The analysis has been reorganized for reproducibility, privacy,
-clearer statistical interpretation, and transparent model diagnostics.
+This repository is a portfolio restructuring of an academic research project. The analysis has been reorganized for reproducibility, privacy, clearer statistical interpretation, and transparent model diagnostics.
