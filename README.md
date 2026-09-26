@@ -280,7 +280,7 @@ visualizations in `figures/`.
 
 ## Author
 
-**Rutuja Kadam** — M.Sc. Statistics | Data Scientist and Analyst
+**Rutuja Kadam** - M.Sc. Statistics | Data Scientist and Analyst
 
 Python · SQL · Machine Learning · Power BI · Statistics
 
