@@ -24,6 +24,6 @@ Academic projects often lack the reproducibility, privacy hygiene, and business 
 
 ## Author
 
-**Rutuja Kadam** — M.Sc. Statistics | Data Scientist and Analyst
+**Rutuja Kadam** - M.Sc. Statistics | Data Scientist and Analyst
 
 [LinkedIn](https://www.linkedin.com/in/rutuja-kadam-data/) · [GitHub](https://github.com/rutu6103)
